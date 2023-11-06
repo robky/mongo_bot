@@ -2,6 +2,7 @@ import asyncio
 import os
 from datetime import datetime
 
+from dateutil.relativedelta import relativedelta  # type: ignore
 from dotenv import load_dotenv
 
 from mongo import Mongo
@@ -14,19 +15,22 @@ MONGO_COLLECTION = os.getenv('MONGO_COLLECTION', 'sample_collection')
 MONGO_USERNAME = os.getenv('MONGO_USERNAME', 'user')
 MONGO_PASSWORD = os.getenv('MONGO_PASSWORD', 'password')
 
-dt_from = datetime.fromisoformat('2022-09-01T00:00:00')
-dt_upto = datetime.fromisoformat('2022-12-31T23:59:00')
-group_type = 'month'
+dt_from = datetime.fromisoformat('2022-10-01T00:00:00')
+dt_upto = datetime.fromisoformat('2022-11-30T23:59:00')
+group_type = 'day'
 
 
-async def main():
-    print('\nfind:')
-    query = {'dt': {'$gt': dt_from, '$lt': dt_upto}}
-    result = await mongo.find(query, limit=5)
-    async for line in result:
-        print(line)
+def get_next_dt(dt: datetime, period: str) -> datetime:
+    if period == 'hour':
+        return dt + relativedelta(hours=1)
+    elif period == 'day':
+        return dt + relativedelta(days=1)
+    elif period == 'month':
+        return dt + relativedelta(months=1)
+    return dt_upto
 
-    print('\naggregate:')
+
+async def get_dataset():
     pipeline = [
         {'$match': {'dt': {'$gte': dt_from, '$lte': dt_upto}}},
         {
@@ -37,9 +41,19 @@ async def main():
         },
         {'$sort': {'_id': 1}},
     ]
-    result = await mongo.aggregate(pipeline)
-    async for line in result:
-        print(line)
+    dataset, labels = [], []
+    next_dt = dt_from
+    async for line in await mongo.aggregate(pipeline):
+        while line['_id'] > next_dt < dt_upto:
+            dataset.append(0)
+            labels.append(next_dt.isoformat())
+            next_dt = get_next_dt(next_dt, group_type)
+        dataset.append(line['total'])
+        labels.append(line['_id'].isoformat())
+        next_dt = get_next_dt(next_dt, group_type)
+
+    result = {'dataset': dataset, 'labels': labels}
+    print(result)
 
 
 if __name__ == '__main__':
@@ -52,4 +66,5 @@ if __name__ == '__main__':
         MONGO_PASSWORD,
     )
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    loop.run_until_complete(get_dataset())
+    print(dt_from, get_next_dt(dt_upto, 'hour'))
