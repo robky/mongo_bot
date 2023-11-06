@@ -9,5 +9,8 @@ class Mongo:
         self.db = self.client.get_database(database)
         self.collection = self.db.get_collection(collection)
 
-    async def find(self, query):
-        return await self.collection.find(query)
+    async def find(self, query, limit=0):
+        return self.collection.find(query).limit(limit)
+
+    async def aggregate(self, pipeline):
+        return self.collection.aggregate(pipeline)
