@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   mongo:
-    image: 7.0.3-rc1-jammy
+    image: mongo:7.0.3-rc1-jammy
     container_name: mongo
     volumes:
       - mongodata:/data/db
