@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: 7.0.3-rc1-jammy
+    container_name: mongo
+    volumes:
+      - mongodata:/data/db
+    env_file: ./.env
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+
+  bot:
+    build: .
+    container_name: bot_mongo
+    env_file: ./.env
+    depends_on:
+      - mongo
+
+volumes:
+  mongodata:
